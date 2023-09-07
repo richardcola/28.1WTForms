@@ -1,0 +1,477 @@
+STEP 1:  CREATE DB & MODEL
+Made directory structure:
+mkdir adopt
+cd adopt
+
+Initialized Flask App:
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'  # SQLite for simplicity
+db = SQLAlchemy(app)
+
+# Add Debug Toolbar
+app.config['DEBUG_TB_ENABLED'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+
+# Initialize Debug Toolbar
+from flask_debugtoolbar import DebugToolbarExtension
+toolbar = DebugToolbarExtension(app)
+
+@app.route('/')
+def index():
+    return "Welcome to the Adopt App!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+Created a Pet Model
+from app import db
+
+class Pet(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String, nullable=False)
+    species = db.Column(db.String, nullable=False)
+    photo_url = db.Column(db.String)
+    age = db.Column(db.Integer)
+    notes = db.Column(db.Text)
+    available = db.Column(db.Boolean, nullable=False, default=True)
+
+Initialized the DB:
+from app import db
+db.create_all()
+
+Started the Flask app:
+python app.py
+
+STEP 1:  subtask, ADD THE DEBUG TOOLBAR
+
+Installed Flask Debug Toolbar:
+pip install Flask-DebugToolbar==0.1.1.0
+
+Imported and Initialized Debug Toolbar:
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension  # Import DebugToolbarExtension
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# Configure Debug Toolbar
+app.config['DEBUG_TB_ENABLED'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+
+toolbar = DebugToolbarExtension(app)  # Initialize Debug Toolbar
+
+
+STEP 2:  MAKE HOMEPAGE LISTING PETS
+
+from flask import Flask, render_template  # Import render_template
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# Configure Debug Toolbar
+app.config['DEBUG_TB_ENABLED'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+toolbar = DebugToolbarExtension(app)
+
+@app.route('/')
+def index():
+    # Query the database for all available pets
+    available_pets = Pet.query.filter_by(available=True).all()
+    return render_template('index.html', pets=available_pets)  # Render a template to display pets
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Available Pets</title>
+</head>
+<body>
+    <h1>Available Pets</h1>
+    <ul>
+        {% for pet in pets %}
+            <li>
+                <strong>Name:</strong> {{ pet.name }}<br>
+                <strong>Species:</strong> {{ pet.species }}<br>
+                {% if pet.photo_url %}
+                    <img src="{{ pet.photo_url }}" alt="{{ pet.name }}'s photo"><br>
+                {% endif %}
+                {% if pet.available %}
+                    <strong>Available: <span style="color: green;">Yes</span></strong><br>
+                {% else %}
+                    <strong>Available: No</strong><br>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+
+STEP 3:  CREATE ADD PET FORM:
+
+pip install Flask-WTF
+
+Created a form class:
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, IntegerField
+from wtforms.validators import InputRequired, URL
+
+class PetForm(FlaskForm):
+    name = StringField('Pet name', validators=[InputRequired()])
+    species = StringField('Species', validators=[InputRequired()])
+    photo_url = StringField('Photo URL', validators=[URL()])
+    age = IntegerField('Age')
+    notes = TextAreaField('Notes')
+
+Modified the app.py to handle the form in app.py file:
+from flask import Flask, render_template, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
+from flask_wtf import FlaskForm
+from wtforms.validators import InputRequired, URL
+from wtforms import StringField, TextAreaField, IntegerField
+from forms import PetForm  # Import the PetForm class from forms.py
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# ... (other code)
+
+@app.route('/add', methods=['GET', 'POST'])
+def add_pet():
+    form = PetForm()
+    if form.validate_on_submit():
+        # Create a new pet object from the form data and add it to the database
+        pet = Pet(
+            name=form.name.data,
+            species=form.species.data,
+            photo_url=form.photo_url.data,
+            age=form.age.data,
+            notes=form.notes.data
+        )
+        db.session.add(pet)
+        db.session.commit()
+        return redirect(url_for('index'))
+
+    return render_template('add_pet.html', form=form)  # Render the add_pet.html template with the form
+
+# ... (other code)
+
+Created a HTML template:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add a Pet</title>
+</head>
+<body>
+    <h1>Add a Pet</h1>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.name.label }}<br>
+            {{ form.name(size=40) }}<br>
+            {% for error in form.name.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            {{ form.species.label }}<br>
+            {{ form.species(size=40) }}<br>
+            {% for error in form.species.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            {{ form.photo_url.label }}<br>
+            {{ form.photo_url(size=40) }}<br>
+            {% for error in form.photo_url.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            {{ form.age.label }}<br>
+            {{ form.age() }}<br>
+            {% for error in form.age.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            {{ form.notes.label }}<br>
+            {{ form.notes(rows=4, cols=40) }}<br>
+            {% for error in form.notes.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            <button type="submit">Add Pet</button>
+        </div>
+    </form>
+</body>
+</html>
+
+Modified the homepage:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Available Pets</title>
+</head>
+<body>
+    <h1>Available Pets</h1>
+    <ul>
+        {% for pet in pets %}
+            <li>
+                <!-- Display pet information here -->
+            </li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('add_pet') }}">Add a Pet</a>  <!-- Add a link to the add_pet route -->
+</body>
+</html>
+
+STEP 4:  CREATE HANDLER FOR ADD PET FORM
+
+from wtforms.validators import InputRequired, URL, NumberRange
+
+class PetForm(FlaskForm):
+    name = StringField('Pet name', validators=[InputRequired()])
+    species = StringField('Species', validators=[InputRequired()])
+    photo_url = StringField('Photo URL', validators=[URL()])
+    age = IntegerField('Age', validators=[NumberRange(min=0)])  # Adding NumberRange validator for positive numbers
+    notes = TextAreaField('Notes')
+
+STEP 5:  ADD VALIDATION:
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, IntegerField
+from wtforms.validators import InputRequired, URL, Optional, AnyOf, NumberRange
+
+class PetForm(FlaskForm):
+    name = StringField('Pet name', validators=[InputRequired()])
+    species = StringField('Species', validators=[InputRequired(), AnyOf(['cat', 'dog', 'porcupine'])])
+    photo_url = StringField('Photo URL', validators=[Optional(), URL()])
+    age = IntegerField('Age', validators=[Optional(), NumberRange(min=0, max=30)])
+    notes = TextAreaField('Notes')
+
+STEP 6:  ADD DISPLAY/EDIT FORM
+
+from flask import Flask, render_template, redirect, url_for, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, IntegerField, BooleanField
+from wtforms.validators import InputRequired, URL, Optional, AnyOf, NumberRange
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# ... (other code)
+
+@app.route('/<int:pet_id>', methods=['GET', 'POST'])
+def pet_detail(pet_id):
+    pet = Pet.query.get(pet_id)
+    form = PetForm(obj=pet)
+
+    if form.validate_on_submit():
+        # Update the pet's information based on the form data
+        form.populate_obj(pet)
+        db.session.commit()
+        return redirect(url_for('index'))
+
+    return render_template('pet_detail.html', pet=pet, form=form)
+
+# ... (other code)
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ pet.name }} - Pet Details</title>
+</head>
+<body>
+    <h1>{{ pet.name }} - Pet Details</h1>
+    <ul>
+        <li><strong>Name:</strong> {{ pet.name }}</li>
+        <li><strong>Species:</strong> {{ pet.species }}</li>
+        {% if pet.photo_url %}
+            <li><strong>Photo:</strong><br><img src="{{ pet.photo_url }}" alt="{{ pet.name }}'s photo"></li>
+        {% endif %}
+        {% if pet.age is not none %}
+            <li><strong>Age:</strong> {{ pet.age }}</li>
+        {% endif %}
+    </ul>
+
+    <h2>Edit Pet</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.photo_url.label }}<br>
+            {{ form.photo_url(size=40) }}<br>
+            {% for error in form.photo_url.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        </div>
+        <div>
+            {{ form.notes.label }}<br>
+            {{ form.notes(rows=4, cols=40) }}<br>
+        </div>
+        <div>
+            {{ form.available.label }}<br>
+            {{ form.available() }}<br>
+        </div>
+        <div>
+            <button type="submit">Save</button>
+        </div>
+    </form>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Available Pets</title>
+</head>
+<body>
+    <h1>Available Pets</h1>
+    <ul>
+        {% for pet in pets %}
+            <li>
+                <a href="{{ url_for('pet_detail', pet_id=pet.id) }}">{{ pet.name }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('add_pet') }}">Add a Pet</a>
+</body>
+</html>
+
+STEP 7:  HANDLE EDIT FORM
+
+from flask import Flask, render_template, redirect, url_for, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, IntegerField, BooleanField
+from wtforms.validators import InputRequired, URL, Optional, AnyOf, NumberRange
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# ... (other code)
+
+@app.route('/<int:pet_id>', methods=['GET', 'POST'])
+def pet_detail(pet_id):
+    pet = Pet.query.get(pet_id)
+    form = PetForm(obj=pet)
+
+    if request.method == 'POST' and form.validate_on_submit():
+        # Update the pet's information based on the form data
+        form.populate_obj(pet)
+        db.session.commit()
+        return redirect(url_for('index'))
+
+    return render_template('pet_detail.html', pet=pet, form=form)
+
+# ... (other code)
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <!-- Rest of the form fields -->
+    <div>
+        <button type="submit">Save</button>
+    </div>
+</form>
+
+STEP 8:  CLEAN UP YOUR CODE
+
+from flask import Flask, render_template, redirect, url_for, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, IntegerField, BooleanField
+from wtforms.validators import InputRequired, URL, Optional, AnyOf, NumberRange
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///adopt.db'
+db = SQLAlchemy(app)
+
+# Configure Debug Toolbar
+app.config['DEBUG_TB_ENABLED'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+toolbar = DebugToolbarExtension(app)
+
+class Pet(db.Model):
+    """Model for pets potentially available for adoption."""
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String, nullable=False)
+    species = db.Column(db.String, nullable=False)
+    photo_url = db.Column(db.String)
+    age = db.Column(db.Integer)
+    notes = db.Column(db.Text)
+    available = db.Column(db.Boolean, nullable=False, default=True)
+
+class PetForm(FlaskForm):
+    """Form for adding/editing pet information."""
+    name = StringField('Pet name', validators=[InputRequired()])
+    species = StringField('Species', validators=[InputRequired(), AnyOf(['cat', 'dog', 'porcupine'])])
+    photo_url = StringField('Photo URL', validators=[Optional(), URL()])
+    age = IntegerField('Age', validators=[Optional(), NumberRange(min=0, max=30)])
+    notes = TextAreaField('Notes')
+    available = BooleanField('Available')
+
+@app.route('/')
+def index():
+    """Homepage that lists available pets."""
+    available_pets = Pet.query.filter_by(available=True).all()
+    return render_template('index.html', pets=available_pets)
+
+@app.route('/add', methods=['GET', 'POST'])
+def add_pet():
+    """Page for adding a new pet."""
+    form = PetForm()
+
+    if form.validate_on_submit():
+        pet = Pet(
+            name=form.name.data,
+            species=form.species.data,
+            photo_url=form.photo_url.data,
+            age=form.age.data,
+            notes=form.notes.data,
+            available=form.available.data
+        )
+        db.session.add(pet)
+        db.session.commit()
+        return redirect(url_for('index'))
+
+    return render_template('add_pet.html', form=form)
+
+@app.route('/<int:pet_id>', methods=['GET', 'POST'])
+def pet_detail(pet_id):
+    """Page for displaying and editing pet details."""
+    pet = Pet.query.get(pet_id)
+    form = PetForm(obj=pet)
+
+    if request.method == 'POST' and form.validate_on_submit():
+        form.populate_obj(pet)
+        db.session.commit()
+        return redirect(url_for('index'))
+
+    return render_template('pet_detail.html', pet=pet, form=form)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+pip freeze > requirements.txt
+
+
+
+
+
